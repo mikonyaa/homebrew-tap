@@ -56,7 +56,7 @@ brew linkage --test mikonyaa/tap/resizelint
 
 For your project, run `resizelint lint . --format json --output report.json` from its root. Exit `0` means no finding reached the configured threshold; `1` means a policy finding, `2` means invalid input/configuration, and `3` means an operational failure. See the [upstream CLI contract](https://github.com/mikonyaa/ResizeLint/blob/1.0.0/Docs/CLI.md).
 
-On every push to `main`, pull request and manual run, CI explicitly installs the current formula from source, even when only documentation changed. A separate PR job checks Homebrew's bottle mechanics and uploads review artifacts; it does not publish bottles. The historical green syntax-only run at `86c90cf` skipped installation and is not install evidence.
+On every push to `main`, pull request and manual run, CI checks the complete tap's style before explicitly installing the current formula from source, even when only documentation changed. The style gate covers the scripts and workflow as well as the formula. A separate PR job checks Homebrew's bottle mechanics and uploads review artifacts; it does not publish bottles. The historical green syntax-only run at `86c90cf` skipped installation and is not install evidence.
 
 ## Uninstall
 

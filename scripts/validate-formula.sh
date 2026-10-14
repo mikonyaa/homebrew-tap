@@ -15,6 +15,7 @@ evidence=$(cd "${evidence}" && pwd -P)
 formula=audit/resizelint-candidate/resizelint
 tap=audit/resizelint-candidate
 export HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 HOMEBREW_NO_ENV_HINTS=1
+platform_name=$(uname -s)
 
 run() {
   local label=$1 expected=$2 result
@@ -37,7 +38,8 @@ then
   printf '%s\n' 'Refusing to replace an existing ResizeLint installation.' >&2
   exit 2
 fi
-if [[ -e $(brew --repository "${tap}")/.git ]]
+candidate_repo=$(brew --repository "${tap}")
+if [[ -e ${candidate_repo}/.git ]]
 then
   printf '%s\n' 'Use a fresh prefix: the candidate tap already exists.' >&2
   exit 2
@@ -55,7 +57,7 @@ run identical-formula 0 cmp "${source_repo}/Formula/resizelint.rb" "${tap_repo}/
 
 run install 0 brew install --build-from-source --verbose "${formula}"
 run installed-info 0 brew info --json=v2 "${formula}"
-if [[ $(uname -s) == Darwin ]]
+if [[ ${platform_name} == Darwin ]]
 then
   if [[ -n ${HOMEBREW_RESIZELINT_TOOLCHAIN:-} ]]
   then
@@ -64,14 +66,15 @@ then
     run compiler 0 xcrun swift --version
   fi
 else
-  run compiler 0 "$(brew --prefix swift)/bin/swift" --version
+  swift_prefix=$(brew --prefix swift)
+  run compiler 0 "${swift_prefix}/bin/swift" --version
 fi
 run test 0 brew test --verbose "${formula}"
 run audit 0 brew audit --strict "${formula}"
 run style 0 brew style "${formula}"
 run linkage 0 brew linkage --test "${formula}"
 binary=$(brew --prefix "${formula}")/bin/resizelint
-if [[ $(uname -s) == Darwin ]]
+if [[ ${platform_name} == Darwin ]]
 then
   run libraries 0 otool -L "${binary}"
   run load-commands 0 otool -l "${binary}"
@@ -115,16 +118,17 @@ then
   run build-toolchain-absent 0 test ! -e "${RESIZELINT_TEST_TOOLCHAIN}"
   unset TOOLCHAINS HOMEBREW_RESIZELINT_TOOLCHAIN
 fi
-if [[ $(uname -s) == Linux && ${GITHUB_ACTIONS:-} == true && ${RUNNER_ENVIRONMENT:-} == github-hosted && ${RUNNER_OS:-} == Linux ]]
+if [[ ${platform_name} == Linux && ${GITHUB_ACTIONS:-} == true && ${RUNNER_ENVIRONMENT:-} == github-hosted && ${RUNNER_OS:-} == Linux ]]
 then
   run remove-build-compiler 0 brew uninstall swift
-  run build-compiler-absent 0 test ! -d "$(brew --cellar)/swift"
+  cellar=$(brew --cellar)
+  run build-compiler-absent 0 test ! -d "${cellar}/swift"
 fi
 run autoremove 0 brew autoremove
 run after-cleanup-installed 0 brew list --versions
 run after-cleanup-linkage 0 brew linkage --test "${formula}"
 run after-cleanup-strict-linkage 0 brew linkage --test --strict "${formula}"
-if [[ $(uname -s) == Darwin ]]
+if [[ ${platform_name} == Darwin ]]
 then
   run after-cleanup-libraries 0 otool -L "${binary}"
 else
@@ -134,7 +138,7 @@ run after-cleanup-test 0 brew test "${formula}"
 run after-cleanup-version 0 bash -c "cd \"\${1}\"; exec env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH PATH=\"\${2}:/usr/bin:/bin\" resizelint version" _ "${consumer}" "${prefix_bin}"
 run after-cleanup-analysis 1 bash -c "cd \"\${1}\"; exec env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH PATH=\"\${2}:/usr/bin:/bin\" resizelint lint Broken.swift --format json" _ "${consumer}" "${prefix_bin}"
 run uninstall 0 brew uninstall "${formula}"
-if [[ -e $(brew --prefix)/bin/resizelint ]]
+if [[ -e ${prefix_bin}/resizelint ]]
 then
   printf '%s\n' 'Homebrew executable remained after uninstall.' >&2
   exit 1

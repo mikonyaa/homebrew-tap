@@ -1,21 +1,86 @@
-name: brew test-bot
+name: Homebrew validation
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  test-bot:
+  tap-style:
+    name: Complete tap style
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Set up Homebrew and check out this SHA
+        uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c # 2026.07.10.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check formula, scripts and workflow before source builds
+        run: brew style mikonyaa/tap
+
+  current-formula:
+    name: Source consumer (${{ matrix.os }})
+    needs: tap-style
     strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15-intel, macos-26, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - name: Set up Homebrew and check out this SHA
+        id: homebrew
+        uses: Homebrew/actions/setup-homebrew@1f8e202ffddf94def7f42f6fa3a482e821489f9c # 2026.07.10.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select the upstream macOS build toolchain
+        if: runner.os == 'macOS'
+        working-directory: ${{ steps.homebrew.outputs.repository-path }}
+        run: bash scripts/setup-macos-toolchain.sh "$RUNNER_TEMP/resizelint-evidence"
+
+      - name: Validate the explicit current formula
+        working-directory: ${{ steps.homebrew.outputs.repository-path }}
+        env:
+          RESIZELINT_DISPOSABLE: '1'
+          HOMEBREW_MAKE_JOBS: '4'
+        run: bash scripts/validate-formula.sh "$RUNNER_TEMP/resizelint-evidence"
+
+      - name: Upload source-consumer evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: source-consumer-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/resizelint-evidence
+            ~/Library/Logs/Homebrew/resizelint
+            ~/.cache/Homebrew/Logs/resizelint
+          if-no-files-found: error
+          retention-days: 14
+
+  pr-bottles:
+    name: PR bottle checks (${{ matrix.os }})
+    if: github.event_name == 'pull_request'
+    needs: current-formula
+    strategy:
+      fail-fast: false
       matrix:
         os: [macos-15-intel, macos-26]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             container: ghcr.io/homebrew/brew:main
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
+    timeout-minutes: 90
     permissions:
       actions: read
       checks: read
@@ -35,15 +100,21 @@ jobs:
           key: ${{ matrix.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
           restore-keys: ${{ matrix.os }}-rubygems-
 
+      - name: Select the upstream macOS build toolchain
+        if: runner.os == 'macOS'
+        working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
+        run: bash scripts/setup-macos-toolchain.sh "$RUNNER_TEMP/resizelint-evidence"
+
       - run: brew test-bot --only-cleanup-before
       - run: brew test-bot --only-setup
       - run: brew test-bot --only-tap-syntax
       - run: brew test-bot --only-formulae
-        if: github.event_name == 'pull_request'
 
-      - name: Upload bottles as artifact
-        if: always() && github.event_name == 'pull_request'
+      - name: Upload review bottles
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: bottles_${{ matrix.os }}
+          name: review-bottles-${{ matrix.os }}
           path: '*.bottle.*'
+          if-no-files-found: warn
+          retention-days: 14

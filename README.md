@@ -10,7 +10,16 @@ This formula builds the pinned [1.0.0 source release](https://github.com/mikonya
 
 On macOS, the selected Xcode/Swift.org toolchain supplies the build compiler and macOS supplies runtime libraries. On Linux, Homebrew Swift is a required runtime dependency: the installed executable dynamically links Swift, Foundation and dispatch libraries. Keep the Homebrew Swift package installed on Linux. Formula revision `1` rebuilds existing 1.0.0 installations with this corrected dependency metadata; `resizelint version` still prints `1.0.0`.
 
-On macOS, install Xcode and its command line tools, and check `xcrun swift --version`: the selected compiler must be Swift 6.3 or newer. Older Xcode versions need an [official Swift.org toolchain](https://www.swift.org/install/macos/package_installer/) selected for CLI builds by exporting its plist `CFBundleIdentifier` as `TOOLCHAINS`; selecting it only in the Xcode IDE does not select it for Homebrew. CI selects Swift 6.3.3 on both macOS architectures. The formula avoids downloading a second Homebrew compiler on macOS; the current Homebrew Swift 6.4 bottle was observed failing its own Mach-O relocation during installation. Source builds also need network access to fetch the pinned Swift packages, disk space and time to compile SwiftSyntax. See [Homebrew's installation requirements](https://docs.brew.sh/Installation).
+On macOS, install Xcode and its command line tools, and check `xcrun swift --version`: the compiler must be Swift 6.3 or newer. Older Xcode versions need an [official Swift.org toolchain](https://www.swift.org/install/macos/package_installer/). Export its plist `CFBundleIdentifier` as `HOMEBREW_RESIZELINT_TOOLCHAIN` before installing; the formula passes it explicitly to `xcrun --toolchain`. Homebrew filters plain `TOOLCHAINS`, and selecting a toolchain only in the Xcode IDE does not select it for Homebrew. CI selects Swift 6.3.3 on both macOS architectures. Source builds need network access to fetch pinned packages, disk space and time to compile SwiftSyntax. See [Homebrew's installation requirements](https://docs.brew.sh/Installation).
+
+For a manually installed Swift 6.3.3 toolchain:
+
+```sh
+export HOMEBREW_RESIZELINT_TOOLCHAIN=$(plutil -extract CFBundleIdentifier raw /Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain/Info.plist)
+xcrun --toolchain "$HOMEBREW_RESIZELINT_TOOLCHAIN" swift --version
+```
+
+The formula uses SwiftPM's supported native build engine. SwiftPM 6.4's new default Swift Build service was observed failing manifest writes inside Homebrew's macOS sandbox; the native engine keeps Homebrew's sandbox enabled. The formula also avoids the redundant macOS Homebrew Swift 6.4 bottle, which failed its own Mach-O relocation during installation.
 
 ```sh
 brew install mikonyaa/tap/resizelint
@@ -20,11 +29,13 @@ The source-validation jobs target these environments:
 
 | Environment | CI runner | Validation boundary |
 | --- | --- | --- |
-| macOS Intel, Sonoma or newer | `macos-15-intel` | Xcode SDK plus selected Swift 6.3.3; source install and all consumer/lifecycle checks. Older macOS releases need their own evidence. |
+| macOS Intel, Sonoma or newer | `macos-15-intel` | Legacy source consumer check with Xcode SDK and selected Swift 6.3.3. Homebrew classifies Intel macOS as Tier 3. |
 | macOS Apple Silicon, Sonoma or newer | `macos-26` | Source install, analyzer smoke test, audit/style, linkage and lifecycle checks. Older macOS releases need their own consumer evidence. |
 | Linux x86_64 | `ubuntu-24.04` | Source install and the same consumer checks, including ELF runtime linkage. |
 
 Other Linux architectures/distributions are not covered by this matrix. A configured runner is not a passing installation: consult the result and uploaded evidence for the exact commit.
+
+The formula retains upstream's minimum macOS 14 requirement. Homebrew's current [support tiers](https://docs.brew.sh/Support-Tiers) cover Apple Silicon macOS 15/26/27; Sonoma 14 and all Intel macOS environments are Tier 3. Older releases need separate consumer evidence and a compatible Swift compiler/SDK.
 
 ## Upgrade
 

@@ -28,5 +28,5 @@ grep -Fq 'Developer ID Installer: Swift Open Source (V9AUD2URP3)' "$evidence/swi
 sudo installer -pkg "$package" -target / | tee "$evidence/swift-package-install.log"
 identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$toolchain/Info.plist")
 [[ $identifier == org.swift.* ]] || exit 1
-printf 'TOOLCHAINS=%s\nRESIZELINT_TEST_TOOLCHAIN=%s\n' "$identifier" "$toolchain" >> "$GITHUB_ENV"
+printf 'HOMEBREW_RESIZELINT_TOOLCHAIN=%s\nRESIZELINT_TEST_TOOLCHAIN=%s\n' "$identifier" "$toolchain" >> "$GITHUB_ENV"
 xcrun --toolchain "$identifier" swift --version | tee "$evidence/preflight-compiler.log"

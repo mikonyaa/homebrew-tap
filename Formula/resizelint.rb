@@ -17,8 +17,10 @@ class Resizelint < Formula
 
   def install
     swift_command = OS.mac? ? ["/usr/bin/xcrun", "swift"] : ["swift"]
-    if OS.mac? && ENV["TOOLCHAINS"]
-      swift_command = ["/usr/bin/xcrun", "--toolchain", ENV["TOOLCHAINS"], "swift"]
+    # Homebrew filters non-HOMEBREW environment variables before formula builds.
+    toolchain = ENV["HOMEBREW_RESIZELINT_TOOLCHAIN"]
+    if OS.mac? && toolchain
+      swift_command = ["/usr/bin/xcrun", "--toolchain", toolchain, "swift"]
     end
     args = std_swift_args
     args << "--disable-sandbox" unless args.include?("--disable-sandbox")

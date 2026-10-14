@@ -52,7 +52,11 @@ run identical-formula 0 cmp "$source_repo/Formula/resizelint.rb" "$tap_repo/Form
 run install 0 brew install --build-from-source --verbose "$formula"
 run installed-info 0 brew info --json=v2 "$formula"
 if [[ $(uname -s) == Darwin ]]; then
-  run compiler 0 xcrun swift --version
+  if [[ -n ${HOMEBREW_RESIZELINT_TOOLCHAIN:-} ]]; then
+    run compiler 0 xcrun --toolchain "$HOMEBREW_RESIZELINT_TOOLCHAIN" swift --version
+  else
+    run compiler 0 xcrun swift --version
+  fi
 else
   run compiler 0 "$(brew --prefix swift)/bin/swift" --version
 fi
@@ -97,7 +101,7 @@ if [[ -n ${RESIZELINT_TEST_TOOLCHAIN:-} ]]; then
   fi
   run hide-build-toolchain 0 sudo mv "$RESIZELINT_TEST_TOOLCHAIN" "$RUNNER_TEMP/resizelint-build-toolchain-disabled.xctoolchain"
   run build-toolchain-absent 0 test ! -e "$RESIZELINT_TEST_TOOLCHAIN"
-  unset TOOLCHAINS
+  unset TOOLCHAINS HOMEBREW_RESIZELINT_TOOLCHAIN
 fi
 run autoremove 0 brew autoremove
 run after-cleanup-installed 0 brew list --versions

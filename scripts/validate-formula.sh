@@ -51,7 +51,8 @@ run identical-formula 0 cmp "$source_repo/Formula/resizelint.rb" "$tap_repo/Form
 
 run install 0 brew install --build-from-source --verbose "$formula"
 run installed-info 0 brew info --json=v2 "$formula"
-run compiler 0 "$(brew --prefix swift)/bin/swift" --version
+swift_binary=$(brew --prefix swift)/bin/swift
+run compiler 0 "$swift_binary" --version
 run test 0 brew test --verbose "$formula"
 run audit 0 brew audit --strict "$formula"
 run style 0 brew style "$formula"
@@ -68,6 +69,7 @@ else
     exit 1
   fi
 fi
+run strict-linkage 0 brew linkage --test --strict "$formula"
 if grep -E '/private/tmp/|/tmp/[^ ]*resizelint|/home/linuxbrew/[^ ]*\.build/' "$evidence/load-commands.log"; then
   printf '%s\n' 'Binary still references its temporary build directory.' >&2
   exit 1
@@ -82,9 +84,17 @@ run outside-analysis 1 bash -c 'cd "$1"; exec env -u LD_LIBRARY_PATH -u DYLD_LIB
 
 run reinstall 0 brew reinstall --build-from-source "$formula"
 run after-reinstall-test 0 brew test "$formula"
+# Homebrew deliberately keeps build dependencies of source installations during
+# autoremove. Explicitly remove this formula's macOS-only build compiler using
+# normal dependency protection; never force an uninstall or ignore dependencies.
+if [[ $(uname -s) == Darwin ]]; then
+  run remove-build-swift 0 brew uninstall swift
+  run build-swift-absent 0 test ! -x "$swift_binary"
+fi
 run autoremove 0 brew autoremove
 run after-cleanup-installed 0 brew list --versions
 run after-cleanup-linkage 0 brew linkage --test "$formula"
+run after-cleanup-strict-linkage 0 brew linkage --test --strict "$formula"
 run after-cleanup-test 0 brew test "$formula"
 run after-cleanup-version 0 bash -c 'cd "$1"; exec env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH PATH="$2:/usr/bin:/bin" resizelint version' _ "$consumer" "$prefix_bin"
 run after-cleanup-analysis 1 bash -c 'cd "$1"; exec env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH PATH="$2:/usr/bin:/bin" resizelint lint Broken.swift --format json' _ "$consumer" "$prefix_bin"

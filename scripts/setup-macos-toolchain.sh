@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # This installer is exclusively for disposable GitHub-hosted macOS runners.
-if [[ ${GITHUB_ACTIONS:-} != true || ${RUNNER_OS:-} != macOS ]]; then
+if [[ ${GITHUB_ACTIONS:-} != true || ${RUNNER_ENVIRONMENT:-} != github-hosted || ${RUNNER_OS:-} != macOS ]]; then
   printf '%s\n' 'Run this toolchain setup only in a disposable GitHub macOS job.' >&2
   exit 2
 fi

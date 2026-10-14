@@ -91,7 +91,7 @@ run after-reinstall-test 0 brew test "$formula"
 # an Xcode requirement, not a brewed Swift dependency. Hide only the Swift.org
 # toolchain this disposable CI job installed, then prove the CLI uses OS runtime.
 if [[ -n ${RESIZELINT_TEST_TOOLCHAIN:-} ]]; then
-  if [[ ${GITHUB_ACTIONS:-} != true || ${RESIZELINT_TEST_TOOLCHAIN} != /Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain ]]; then
+  if [[ ${GITHUB_ACTIONS:-} != true || ${RUNNER_ENVIRONMENT:-} != github-hosted || ${RESIZELINT_TEST_TOOLCHAIN} != /Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain ]]; then
     printf '%s\n' 'Refusing to move a toolchain outside disposable CI setup.' >&2
     exit 2
   fi

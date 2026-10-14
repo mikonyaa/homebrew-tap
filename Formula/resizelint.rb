@@ -12,6 +12,7 @@ class Resizelint < Formula
   end
 
   def install
+    system "swift", "--version"
     system "swift", "build", "--disable-sandbox", "--configuration", "release"
     bin.install ".build/release/resizelint"
   end

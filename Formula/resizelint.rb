@@ -4,11 +4,15 @@ class Resizelint < Formula
   url "https://github.com/mikonyaa/ResizeLint/releases/download/1.0.0/ResizeLint-1.0.0-source.tar.gz"
   sha256 "d9388896fb241af065ea44422364626ac30632f7f2ff5d0747acf2dad55b2bd0"
   license "MIT"
-
-  depends_on "swift" => :build
+  revision 1
 
   on_macos do
+    depends_on "swift" => :build
     depends_on macos: :sonoma
+  end
+
+  on_linux do
+    depends_on "swift"
   end
 
   def install

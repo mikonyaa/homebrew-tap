@@ -8,6 +8,8 @@ The official Homebrew tap for [ResizeLint](https://github.com/mikonyaa/ResizeLin
 
 This formula builds the pinned [1.0.0 source release](https://github.com/mikonyaa/ResizeLint/releases/tag/1.0.0) with Swift Package Manager. It installs one executable; the upstream binary archives and macOS installer are separate distributions. Homebrew installs the declared dependencies. The package requires Swift 6.3 or newer and resolves the exact versions in `Package.resolved`; upstream's `.swift-version` is 6.3.3. The compiler actually used is printed during installation.
 
+Swift is a build dependency on macOS and a required runtime dependency on Linux: the installed Linux executable dynamically links Swift, Foundation and dispatch libraries. Keep the Homebrew Swift package installed on Linux. Formula revision `1` rebuilds existing 1.0.0 installations with this corrected dependency metadata; `resizelint version` still prints `1.0.0`.
+
 On macOS, install Xcode and its command line tools. The Homebrew Swift dependency requires Xcode; source builds also need network access to fetch the pinned Swift packages, disk space and time to compile SwiftSyntax. See [Homebrew's installation requirements](https://docs.brew.sh/Installation).
 
 ```sh

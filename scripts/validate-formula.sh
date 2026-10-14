@@ -91,9 +91,9 @@ run outside-analysis 1 bash -c 'cd "$1"; exec env -u LD_LIBRARY_PATH -u DYLD_LIB
 
 run reinstall 0 brew reinstall --build-from-source "$formula"
 run after-reinstall-test 0 brew test "$formula"
-# Homebrew keeps source-install build dependencies during autoremove. macOS uses
-# an Xcode requirement, not a brewed Swift dependency. Hide only the Swift.org
-# toolchain this disposable CI job installed, then prove the CLI uses OS runtime.
+# Homebrew keeps source-install build dependencies during autoremove. In hosted
+# macOS CI, hide only the Swift.org toolchain this job installed. On hosted Linux,
+# uninstall the build-only compiler normally, then prove the CLI uses OS runtime.
 if [[ -n ${RESIZELINT_TEST_TOOLCHAIN:-} ]]; then
   if [[ ${GITHUB_ACTIONS:-} != true || ${RUNNER_ENVIRONMENT:-} != github-hosted || ${RESIZELINT_TEST_TOOLCHAIN} != /Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain ]]; then
     printf '%s\n' 'Refusing to move a toolchain outside disposable CI setup.' >&2
@@ -103,10 +103,19 @@ if [[ -n ${RESIZELINT_TEST_TOOLCHAIN:-} ]]; then
   run build-toolchain-absent 0 test ! -e "$RESIZELINT_TEST_TOOLCHAIN"
   unset TOOLCHAINS HOMEBREW_RESIZELINT_TOOLCHAIN
 fi
+if [[ $(uname -s) == Linux && ${GITHUB_ACTIONS:-} == true && ${RUNNER_ENVIRONMENT:-} == github-hosted && ${RUNNER_OS:-} == Linux ]]; then
+  run remove-build-compiler 0 brew uninstall swift
+  run build-compiler-absent 0 test ! -d "$(brew --cellar)/swift"
+fi
 run autoremove 0 brew autoremove
 run after-cleanup-installed 0 brew list --versions
 run after-cleanup-linkage 0 brew linkage --test "$formula"
 run after-cleanup-strict-linkage 0 brew linkage --test --strict "$formula"
+if [[ $(uname -s) == Darwin ]]; then
+  run after-cleanup-libraries 0 otool -L "$binary"
+else
+  run after-cleanup-libraries 0 ldd "$binary"
+fi
 run after-cleanup-test 0 brew test "$formula"
 run after-cleanup-version 0 bash -c 'cd "$1"; exec env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH PATH="$2:/usr/bin:/bin" resizelint version' _ "$consumer" "$prefix_bin"
 run after-cleanup-analysis 1 bash -c 'cd "$1"; exec env -u LD_LIBRARY_PATH -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH PATH="$2:/usr/bin:/bin" resizelint lint Broken.swift --format json' _ "$consumer" "$prefix_bin"

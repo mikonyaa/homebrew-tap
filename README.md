@@ -8,7 +8,7 @@ The official Homebrew tap for [ResizeLint](https://github.com/mikonyaa/ResizeLin
 
 This formula builds the pinned [1.0.0 source release](https://github.com/mikonyaa/ResizeLint/releases/tag/1.0.0) with Swift Package Manager. It installs one executable; the upstream binary archives and macOS installer are separate distributions. Homebrew installs the declared dependencies. The package requires Swift 6.3 or newer and resolves the exact versions in `Package.resolved`; upstream's `.swift-version` is 6.3.3. The compiler actually used is printed during installation.
 
-On macOS, the selected Xcode/Swift.org toolchain supplies the build compiler and macOS supplies runtime libraries. On Linux, Homebrew Swift is a required runtime dependency: the installed executable dynamically links Swift, Foundation and dispatch libraries. Keep the Homebrew Swift package installed on Linux. Formula revision `1` rebuilds existing 1.0.0 installations with this corrected dependency metadata; `resizelint version` still prints `1.0.0`.
+On macOS, the selected Xcode/Swift.org toolchain supplies the build compiler and macOS supplies runtime libraries. On Linux, Swift is build-only: Homebrew's `std_swift_args` embeds the Swift runtime with `--static-swift-stdlib`. The tested ELF still uses system libc, libm, libstdc++ and libgcc_s; it is not a fully static or cross-distribution binary. Formula revision `1` rebuilds existing 1.0.0 installations with this source-packaging change; `resizelint version` still prints `1.0.0`.
 
 On macOS, install Xcode and its command line tools, and check `xcrun swift --version`: the compiler must be Swift 6.3 or newer. Older Xcode versions need an [official Swift.org toolchain](https://www.swift.org/install/macos/package_installer/). Export its plist `CFBundleIdentifier` as `HOMEBREW_RESIZELINT_TOOLCHAIN` before installing; the formula passes it explicitly to `xcrun --toolchain`. Homebrew filters plain `TOOLCHAINS`, and selecting a toolchain only in the Xcode IDE does not select it for Homebrew. CI selects Swift 6.3.3 on both macOS architectures. Source builds need network access to fetch pinned packages, disk space and time to compile SwiftSyntax. See [Homebrew's installation requirements](https://docs.brew.sh/Installation).
 
@@ -19,7 +19,7 @@ export HOMEBREW_RESIZELINT_TOOLCHAIN=$(plutil -extract CFBundleIdentifier raw /L
 xcrun --toolchain "$HOMEBREW_RESIZELINT_TOOLCHAIN" swift --version
 ```
 
-The formula uses SwiftPM's supported native build engine. SwiftPM 6.4's new default Swift Build service was observed failing manifest writes inside Homebrew's macOS sandbox; the native engine keeps Homebrew's sandbox enabled. The formula also avoids the redundant macOS Homebrew Swift 6.4 bottle, which failed its own Mach-O relocation during installation.
+The formula uses SwiftPM's current native build fallback and keeps Homebrew's sandbox enabled. Both build engines hit permission errors with a custom mounted temporary directory; the native engine with a standard temporary directory passed. SwiftPM 6.4 deprecates this fallback, so future compiler updates require validation. The formula also avoids the redundant macOS Homebrew Swift 6.4 bottle, which failed its own Mach-O relocation during installation.
 
 ```sh
 brew install mikonyaa/tap/resizelint
@@ -68,7 +68,7 @@ This removes the Homebrew executable. Independently installed ResizeLint copies 
 
 ## Troubleshooting and maintenance
 
-Keep `brew config`, the install log (including its Swift version), `brew test` output and linkage output when investigating a build/runtime problem. Missing Swift shared libraries on Linux indicate an incomplete runtime dependency; do not fix an installation by setting a global `LD_LIBRARY_PATH`. See [Homebrew troubleshooting](https://docs.brew.sh/Troubleshooting) and [maintainer validation/version updates](MAINTAINING.md).
+Keep `brew config`, the install log (including its Swift version), `brew test` output and linkage output when investigating a build/runtime problem. A Linux executable requesting Swift shared libraries does not match the tested source packaging; check its version and installation source instead of setting a global `LD_LIBRARY_PATH`. See [Homebrew troubleshooting](https://docs.brew.sh/Troubleshooting) and [maintainer validation/version updates](MAINTAINING.md).
 
 `Formula/resizelint.rb` in this tap is the source of truth for `brew install mikonyaa/tap/resizelint`. The duplicate formula in the upstream repository is a reference copy; synchronizing it requires a separate upstream change. See the [ownership procedure](MAINTAINING.md#formula-ownership).
 

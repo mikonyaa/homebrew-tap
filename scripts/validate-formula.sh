@@ -34,7 +34,7 @@ if brew list --formula resizelint >/dev/null 2>&1; then
   printf '%s\n' 'Refusing to replace an existing ResizeLint installation.' >&2
   exit 2
 fi
-if brew --repository "$tap" >/dev/null 2>&1; then
+if [[ -e $(brew --repository "$tap")/.git ]]; then
   printf '%s\n' 'Use a fresh prefix: the candidate tap already exists.' >&2
   exit 2
 fi

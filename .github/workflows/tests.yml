@@ -29,6 +29,11 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Select the upstream macOS build toolchain
+        if: runner.os == 'macOS'
+        working-directory: ${{ steps.homebrew.outputs.repository-path }}
+        run: bash scripts/setup-macos-toolchain.sh "$RUNNER_TEMP/resizelint-evidence"
+
       - name: Validate the explicit current formula
         working-directory: ${{ steps.homebrew.outputs.repository-path }}
         env:
@@ -80,6 +85,11 @@ jobs:
           path: ${{ steps.set-up-homebrew.outputs.gems-path }}
           key: ${{ matrix.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
           restore-keys: ${{ matrix.os }}-rubygems-
+
+      - name: Select the upstream macOS build toolchain
+        if: runner.os == 'macOS'
+        working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
+        run: bash scripts/setup-macos-toolchain.sh "$RUNNER_TEMP/resizelint-evidence"
 
       - run: brew test-bot --only-cleanup-before
       - run: brew test-bot --only-setup

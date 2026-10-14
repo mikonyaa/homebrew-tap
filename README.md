@@ -8,9 +8,9 @@ The official Homebrew tap for [ResizeLint](https://github.com/mikonyaa/ResizeLin
 
 This formula builds the pinned [1.0.0 source release](https://github.com/mikonyaa/ResizeLint/releases/tag/1.0.0) with Swift Package Manager. It installs one executable; the upstream binary archives and macOS installer are separate distributions. Homebrew installs the declared dependencies. The package requires Swift 6.3 or newer and resolves the exact versions in `Package.resolved`; upstream's `.swift-version` is 6.3.3. The compiler actually used is printed during installation.
 
-Swift is a build dependency on macOS and a required runtime dependency on Linux: the installed Linux executable dynamically links Swift, Foundation and dispatch libraries. Keep the Homebrew Swift package installed on Linux. Formula revision `1` rebuilds existing 1.0.0 installations with this corrected dependency metadata; `resizelint version` still prints `1.0.0`.
+On macOS, the selected Xcode/Swift.org toolchain supplies the build compiler and macOS supplies runtime libraries. On Linux, Homebrew Swift is a required runtime dependency: the installed executable dynamically links Swift, Foundation and dispatch libraries. Keep the Homebrew Swift package installed on Linux. Formula revision `1` rebuilds existing 1.0.0 installations with this corrected dependency metadata; `resizelint version` still prints `1.0.0`.
 
-On macOS, install Xcode and its command line tools. The Homebrew Swift dependency requires Xcode; source builds also need network access to fetch the pinned Swift packages, disk space and time to compile SwiftSyntax. See [Homebrew's installation requirements](https://docs.brew.sh/Installation).
+On macOS, install Xcode and its command line tools, and check `xcrun swift --version`: the selected compiler must be Swift 6.3 or newer. Older Xcode versions need an [official Swift.org toolchain](https://www.swift.org/install/macos/) selected through Xcode or `TOOLCHAINS`. CI selects Swift 6.3.3 on both macOS architectures. The formula avoids downloading a second Homebrew compiler on macOS; the current Homebrew Swift 6.4 bottle was observed failing its own Mach-O relocation during installation. Source builds also need network access to fetch the pinned Swift packages, disk space and time to compile SwiftSyntax. See [Homebrew's installation requirements](https://docs.brew.sh/Installation).
 
 ```sh
 brew install mikonyaa/tap/resizelint
@@ -20,7 +20,7 @@ The source-validation jobs target these environments:
 
 | Environment | CI runner | Validation boundary |
 | --- | --- | --- |
-| macOS Intel, Sonoma or newer | `macos-15-intel` | Current Homebrew Swift has no Intel macOS bottle; its compiler must build from source. Check the source-consumer job before relying on this platform. |
+| macOS Intel, Sonoma or newer | `macos-15-intel` | Xcode SDK plus selected Swift 6.3.3; source install and all consumer/lifecycle checks. Older macOS releases need their own evidence. |
 | macOS Apple Silicon, Sonoma or newer | `macos-26` | Source install, analyzer smoke test, audit/style, linkage and lifecycle checks. Older macOS releases need their own consumer evidence. |
 | Linux x86_64 | `ubuntu-24.04` | Source install and the same consumer checks, including ELF runtime linkage. |
 

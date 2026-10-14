@@ -7,7 +7,7 @@ class Resizelint < Formula
   revision 1
 
   on_macos do
-    depends_on "swift" => :build
+    depends_on xcode: :build
     depends_on macos: :sonoma
   end
 

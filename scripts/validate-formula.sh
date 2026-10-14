@@ -51,8 +51,11 @@ run identical-formula 0 cmp "$source_repo/Formula/resizelint.rb" "$tap_repo/Form
 
 run install 0 brew install --build-from-source --verbose "$formula"
 run installed-info 0 brew info --json=v2 "$formula"
-swift_binary=$(brew --prefix swift)/bin/swift
-run compiler 0 "$swift_binary" --version
+if [[ $(uname -s) == Darwin ]]; then
+  run compiler 0 xcrun swift --version
+else
+  run compiler 0 "$(brew --prefix swift)/bin/swift" --version
+fi
 run test 0 brew test --verbose "$formula"
 run audit 0 brew audit --strict "$formula"
 run style 0 brew style "$formula"
@@ -84,12 +87,17 @@ run outside-analysis 1 bash -c 'cd "$1"; exec env -u LD_LIBRARY_PATH -u DYLD_LIB
 
 run reinstall 0 brew reinstall --build-from-source "$formula"
 run after-reinstall-test 0 brew test "$formula"
-# Homebrew deliberately keeps build dependencies of source installations during
-# autoremove. Explicitly remove this formula's macOS-only build compiler using
-# normal dependency protection; never force an uninstall or ignore dependencies.
-if [[ $(uname -s) == Darwin ]]; then
-  run remove-build-swift 0 brew uninstall swift
-  run build-swift-absent 0 test ! -x "$swift_binary"
+# Homebrew keeps source-install build dependencies during autoremove. macOS uses
+# an Xcode requirement, not a brewed Swift dependency. Hide only the Swift.org
+# toolchain this disposable CI job installed, then prove the CLI uses OS runtime.
+if [[ -n ${RESIZELINT_TEST_TOOLCHAIN:-} ]]; then
+  if [[ ${GITHUB_ACTIONS:-} != true || ${RESIZELINT_TEST_TOOLCHAIN} != /Library/Developer/Toolchains/swift-6.3.3-RELEASE.xctoolchain ]]; then
+    printf '%s\n' 'Refusing to move a toolchain outside disposable CI setup.' >&2
+    exit 2
+  fi
+  run hide-build-toolchain 0 sudo mv "$RESIZELINT_TEST_TOOLCHAIN" "$RUNNER_TEMP/resizelint-build-toolchain-disabled.xctoolchain"
+  run build-toolchain-absent 0 test ! -e "$RESIZELINT_TEST_TOOLCHAIN"
+  unset TOOLCHAINS
 fi
 run autoremove 0 brew autoremove
 run after-cleanup-installed 0 brew list --versions

@@ -33,6 +33,7 @@ jobs:
         working-directory: ${{ steps.homebrew.outputs.repository-path }}
         env:
           RESIZELINT_DISPOSABLE: '1'
+          HOMEBREW_MAKE_JOBS: '4'
         run: bash scripts/validate-formula.sh "$RUNNER_TEMP/resizelint-evidence"
 
       - name: Upload source-consumer evidence

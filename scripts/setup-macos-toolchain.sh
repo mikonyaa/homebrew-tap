@@ -24,6 +24,7 @@ curl --fail --location --retry 3 \
   --output "$package"
 shasum -a 256 "$package" | tee "$evidence/swift-package-sha256.log"
 pkgutil --check-signature "$package" | tee "$evidence/swift-package-signature.log"
+grep -Fq 'Developer ID Installer: Swift Open Source (V9AUD2URP3)' "$evidence/swift-package-signature.log"
 sudo installer -pkg "$package" -target / | tee "$evidence/swift-package-install.log"
 identifier=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$toolchain/Info.plist")
 [[ $identifier == org.swift.* ]] || exit 1

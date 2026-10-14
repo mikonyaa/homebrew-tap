@@ -16,8 +16,13 @@ class Resizelint < Formula
   end
 
   def install
-    system "swift", "--version"
-    system "swift", "build", "--disable-sandbox", *std_swift_args
+    swift_command = OS.mac? ? ["/usr/bin/xcrun", "swift"] : ["swift"]
+    args = std_swift_args
+    args << "--disable-sandbox" unless args.include?("--disable-sandbox")
+    # SwiftPM 6.4's Swift Build service cannot write its manifest in Homebrew's
+    # macOS sandbox. Keep the supported native engine and the Homebrew sandbox.
+    system(*swift_command, "--version")
+    system(*swift_command, "build", "--build-system", "native", *args)
     bin.install ".build/release/resizelint"
   end
 
